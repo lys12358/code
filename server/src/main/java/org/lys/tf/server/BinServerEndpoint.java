@@ -1,8 +1,8 @@
 package org.lys.tf.server;
 
 import lombok.extern.slf4j.Slf4j;
+import org.lys.tf.security.TFSecurityUtil;
 import org.springframework.web.bind.annotation.RestController;
-import sun.net.www.content.audio.basic;
 
 import javax.websocket.*;
 import javax.websocket.server.PathParam;
@@ -19,17 +19,49 @@ import java.util.concurrent.ConcurrentHashMap;
 @RestController
 @ServerEndpoint("/bin/{key}")
 public class BinServerEndpoint {
+
+    /*private TFUtil tFUtil;
+
+    public BinServerEndpoint() {
+        this.tFUtil = new TFUtil(new TFSecurityUtil());
+    }*/
+
+
     /**
      * 会话映射
      */
     public static final Map<String, Session> SESSIONS_MAP = new ConcurrentHashMap<>();
+    /**
+     * 处理线程映射
+     */
     public static final Map<String, CtrlData> CTRL_DATA_MAP = new ConcurrentHashMap<>();
+    /**
+     * AES密钥映射
+     */
+    public static final Map<String, ClientInfo> CLIENT_MAP = new ConcurrentHashMap<>();
+    /**
+     * 加解密工具映射
+     */
+    public static final Map<String, TFUtil> TFUTIL_MAP = new ConcurrentHashMap<>();
+
 
     @OnOpen // 用户建立连接时触发。
     public void openSession(@PathParam("key") String key, Session session) {
+        byte[] aesKey = CLIENT_MAP.get(key.split(",")[0]).getKeyByte();//获取aes密钥
+        if (aesKey == null) {
+            log.error("非法访问: {}", key);
+            try {
+                session.close();
+                return;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
         SESSIONS_MAP.put(key, session);
         log.info("接收到请求{}", key);
         try {
+            TFUtil tFUtil = new TFUtil(new TFSecurityUtil(), aesKey);
+            TFUTIL_MAP.put(key, tFUtil);
             CtrlData cd = new CtrlData(key);
             CTRL_DATA_MAP.put(key, cd);
             cd.start();
@@ -38,10 +70,10 @@ public class BinServerEndpoint {
         }
     }
 
-    @OnMessage // 监听发送消息的事件
+    @OnMessage // 监听发送消息的事件（接收到客户端数据传输）
     public void onMessage(@PathParam("key") String key, ByteBuffer data) {
         try {
-            CTRL_DATA_MAP.get(key).send(data);
+            CTRL_DATA_MAP.get(key).send(TFUTIL_MAP.get(key).decryptAes(data.array(), data.limit()));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -53,6 +85,8 @@ public class BinServerEndpoint {
             SESSIONS_MAP.remove(key);
             CTRL_DATA_MAP.get(key).close();
             CTRL_DATA_MAP.remove(key);
+            TFUTIL_MAP.remove(key);
+//            CLIENT_MAP.remove(key);
             session.close();
             log.info("关闭连接{}", key);
         } catch (Exception e) {
@@ -82,8 +116,8 @@ public class BinServerEndpoint {
         public CtrlData(String key) {
             try {
                 this.key = key;
-                String ip = key.split(":")[0];
-                int port = Integer.parseInt(key.split(":")[1]);
+                String ip = CLIENT_MAP.get(key.split(",")[0]).getIp();
+                int port = CLIENT_MAP.get(key.split(",")[0]).getPort();
                 s = new Socket(ip, port);
                 is = s.getInputStream();
                 os = s.getOutputStream();
@@ -98,9 +132,9 @@ public class BinServerEndpoint {
          *
          * @param data
          */
-        public void send(ByteBuffer data) {
+        public void send(byte[] data) {
             try {
-                os.write(data.array());
+                os.write(data);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -114,10 +148,11 @@ public class BinServerEndpoint {
                     return;
                 }
                 RemoteEndpoint.Basic basic = session.getBasicRemote();
-                byte[] buf = new byte[2048];
+                byte[] buf = new byte[20480];
                 int len = is.read(buf);
                 while (len != -1) {
-                    basic.sendBinary(ByteBuffer.wrap(buf, 0, len));
+                    //发送数据（向客户端发送数据）
+                    basic.sendBinary(ByteBuffer.wrap(TFUTIL_MAP.get(key).encryptAes(buf, len)));
                     len = is.read(buf);
                 }
                 close();
