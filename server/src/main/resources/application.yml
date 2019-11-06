@@ -1,5 +1,9 @@
 server:
   port: 18080
+card:
+  key: ILS9x7Z/erkvRXf+6+xi/Fvcn8g6GgxJe1+sjmB2uxBK0Wx+D/LqlwMenGn6QpgJK05X254WRjCjsAz+WvuOSQoRjqI7lJiasGSWcnh5vlkvokXNejidQ+tgkM6L9JeIOqzFsJwjvfqF3gCiCjKrENhP7VctUNSveraUsm3xIr0=
+  data: Z/EOKU6E/H3lMXltb2wNQvGQN+kbelW+nJWCssNtLk+TrfDDjNn/xTrRhxoSTje35Bgpw0261vTqWIiOjD2sClvXoGN1+Rv9QUYGui+lEmWtZus1nx64n6c9gsdwGJc5lKrZt2j/60GXaMCiThhIU+RU+4vnhzuls7RAyU2/grNU4jYDbHCdkBVhPz1UYsVwT5/3SK075cnb+bJH8D/FkdjT41//3KJ9/aKDtKsPXnK6E4X7ZBVhXeT/h1pvGCa2Tn8Rr8PBHd+lisNEcO31OXGFGLKRrSQ8m/QYULmVt+T53cN8hWuGgSp+MuKE3NlSTYIZwUFCScZjCNIcTQo6Iur8+22n5zvv5erzbPPzne4u7z+7wKURVrusVelCPls+VtWLCYEw1ztl11P/GP6YMC+IPbZF+cgoSqoimU9f55h9cRc4HSsd5T24vM5yGV1QPK59vhx2BGm5eAba1i78aiACxH8DUxTvwOD/hh5w10WPE35f/jnYzPdUQdWWIvOYPWwEzQcAR3P2mgAWMKuhdg==
+
 #logging:
 #  level:
 #    org: debug

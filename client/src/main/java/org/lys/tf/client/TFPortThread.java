@@ -15,7 +15,7 @@ import java.util.UUID;
  * 端口监听线程
  */
 public class TFPortThread implements Runnable {
-    private final String REM_ADDR = "ws://localhost:18080/bin/";
+    private final String REM_ADDR = "ws://127.0.0.1:18080/bin/";
     private int port;
     private String addr;
     private String token;

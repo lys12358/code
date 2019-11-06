@@ -139,4 +139,13 @@ public class TFUtil {
     public byte[] decryptAes(byte[] data, int length) throws Exception {
         return tFSecurityUtil.decryptAes(data, length);
     }
+
+    /**
+     * 初始化AES加解密对象
+     *
+     * @param key 密钥
+     */
+    public void initAES(byte[] key) {
+        tFSecurityUtil.initAES(key);
+    }
 }

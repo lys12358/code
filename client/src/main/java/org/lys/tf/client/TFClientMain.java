@@ -21,6 +21,7 @@ public class TFClientMain {
     public TFClientMain() {
         portMap = new HashMap<Integer, String>();
         portMap.put(1022, "123.57.243.78:7003");
+//        portMap.put(1022, "192.168.1.71:22");
 //        portMap.put(1022, "192.168.100.100:22");
 //        portMap.put(1006, "192.168.100.100:3306");
 //        portMap.put(1007, "107.148.246.224:19208");
@@ -29,16 +30,20 @@ public class TFClientMain {
     public void start() {
         System.out.println("启动TF客户端");
         System.out.println("正在登录到服务端…");
-
-        Map<Integer, String> tokenMap = login();
-        if (tokenMap == null) {
-            System.out.println("登录到服务端失败!");
-            return;
+        Map<Integer, String> tokenMap = null;
+        while (true) {
+            tokenMap = login();
+            if (tokenMap == null) {
+                System.out.println("登录到服务端失败!");
+                continue;
+            }
+            break;
         }
         System.out.println("成功登录到服务端");
         System.out.println("映射地址");
+        Map<Integer, String> finalTokenMap = tokenMap;
         portMap.forEach((port, addr) -> {
-            new Thread(new TFPortThread(port, addr, tokenMap.get(port))).start();
+            new Thread(new TFPortThread(port, addr, finalTokenMap.get(port))).start();
             System.out.println(port + " => " + addr);
         });
     }
@@ -63,29 +68,33 @@ public class TFClientMain {
 
             System.out.println("登录用户 " + account);
 
-            TFSecurityUtil eu1 = new TFSecurityUtil();
-            eu1.setPub(true);
-            eu1.setKey(Config.publicKeyString);
-            eu1.initRas();
+            TFSecurityUtil eu = new TFSecurityUtil();
+            eu.setPub(true);
+            eu.setKey(Config.publicKeyString);
+            eu.initRas();
 
+            //验证账号密码
+            String info = System.currentTimeMillis() + "," + account + "," + password;
+            String rs = sendPost(eu, info);
+            if (rs == null) {
+                return null;
+            }
+
+            //验证密码卡
+            System.out.println("请输入密码卡编码 " + rs.split(",")[1]);
+            String card = console == null ? sc.nextLine() : new String(console.readPassword());
+            info = rs.split(",")[0] + "," + card;
+            rs = sendPost(eu, info);
+            if (rs == null) {
+                return null;
+            }
+
+            //注册每一个端口映射
+            String token = rs;
             portMap.forEach((port, addr) -> {
                 try {
-                    byte[] yuan = (account + "," + password + "," + addr.split(":")[0] + "," + addr.split(":")[1]).getBytes("utf-8");
-                    String base64 = eu1.encryptBase64(eu1.encrypt(yuan, yuan.length));
-                    StringEntity stringEntity = new StringEntity(base64);
-                    stringEntity.setContentType("application/x-www-form-urlencoded; charset=utf-8");
-                    HttpPost httpPost = new HttpPost("http://127.0.0.1:18080/security/");
-                    httpPost.setEntity(stringEntity);
-
-                    CloseableHttpClient client = HttpClients.createDefault();
-                    CloseableHttpResponse response = client.execute(httpPost);
-                    HttpEntity entity = response.getEntity();
-                    if (entity != null) {
-                        String data = EntityUtils.toString(entity);
-                        byte[] data1 = eu1.decryptBase64(data);
-//                        return new String(eu1.decrypt(data1, data1.length), "utf-8");
-                        tokenMap.put(port, new String(eu1.decrypt(data1, data1.length), "utf-8"));
-                    }
+                    String value = token + "," + addr.split(":")[0] + "," + addr.split(":")[1];
+                    tokenMap.put(port, sendPost(eu, value));
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -94,6 +103,35 @@ public class TFClientMain {
             return tokenMap;
         } catch (Exception e) {
             e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * 提交POST请求
+     *
+     * @param eu
+     * @param value
+     * @return
+     */
+    private String sendPost(TFSecurityUtil eu, String value) throws Exception {
+        byte[] yuan = value.getBytes("utf-8");
+        String base64 = eu.encryptBase64(eu.encrypt(yuan, yuan.length));
+        StringEntity stringEntity = new StringEntity(base64);
+        stringEntity.setContentType("application/x-www-form-urlencoded; charset=utf-8");
+        HttpPost httpPost = new HttpPost("http://127.0.0.1:18080/security/");
+        httpPost.setEntity(stringEntity);
+
+        CloseableHttpClient client = HttpClients.createDefault();
+        CloseableHttpResponse response = client.execute(httpPost);
+        HttpEntity entity = response.getEntity();
+        if (entity != null) {
+            String data = EntityUtils.toString(entity);
+            if (data == null) {
+                return null;
+            }
+            byte[] data1 = eu.decryptBase64(data);
+            return new String(eu.decrypt(data1, data1.length), "utf-8");
         }
         return null;
     }

@@ -44,6 +44,10 @@ public class BinServerEndpoint {
      */
     public static final Map<String, TFUtil> TFUTIL_MAP = new ConcurrentHashMap<>();
 
+    /**
+     * 密码卡验证映射
+     */
+    public static final Map<String, String> CARD_TOKEN = new ConcurrentHashMap<>();
 
     @OnOpen // 用户建立连接时触发。
     public void openSession(@PathParam("key") String key, Session session) {
